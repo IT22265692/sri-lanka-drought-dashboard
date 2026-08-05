@@ -1,0 +1,26 @@
+District,cells_in_bbox,cells_inside_polygon,rows
+Ampara,16,1,504
+Anuradhapura,16,2,504
+Badulla,20,1,504
+Batticaloa,16,1,504
+Colombo,12,1,504
+Galle,16,1,504
+Gampaha,12,1,504
+Hambantota,12,1,504
+Jaffna,12,1,504
+Kalutara,15,1,504
+Kandy,12,1,504
+Kegalle,16,1,504
+Kilinochchi,20,1,504
+Kurunegala,16,1,504
+Mannar,12,1,504
+Matale,12,1,504
+Matara,12,1,504
+Moneragala,12,2,504
+Mullaitivu,12,1,504
+Nuwara Eliya,15,1,504
+Polonnaruwa,20,1,504
+Puttalam,15,2,504
+Ratnapura,15,1,504
+Trincomalee,20,1,504
+Vavuniya,12,1,504
