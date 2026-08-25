@@ -410,8 +410,8 @@ def return_period_table(model: DistrictModel, periods=(2, 5, 10, 20, 50, 100)) -
             "Return period (years)": T,
             "Drought length (months)": round(d, 1),
             "Drought severity score": round(s, 2),
-            "Both long AND severe \u2014 recurs every (yrs)": round(T_and(model, d, s), 1),
-            "Either long OR severe \u2014 recurs every (yrs)": round(T_or(model, d, s), 1),
+            "T_AND(d,s) years": round(T_and(model, d, s), 1),
+            "T_OR(d,s) years": round(T_or(model, d, s), 1),
         })
     return pd.DataFrame(rows)
 

@@ -422,9 +422,10 @@ def tab_district_deepdive():
 
     st.subheader("Standard drought return periods")
     st.dataframe(result["return_periods"], use_container_width=True, hide_index=True)
-    st.caption("'Return period' is how many years, on average, between droughts at least this big. "
-                "The AND column asks for both conditions together (rarer). The OR column asks for "
-                "either one alone (more common). See the Learn About SPI tab for a full walkthrough.")
+    st.caption("'Return period' means how many years, on average, between droughts at least this big. "
+            "**T_AND(d,s)** is the return period when both the length threshold d and the severity "
+            "threshold s are exceeded together (rarer). **T_OR(d,s)** is when at least one of them "
+            "is exceeded (more common). See the Learn About SPI tab for a full walkthrough.")
 
     if expert:
         st.divider()
