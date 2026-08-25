@@ -413,12 +413,12 @@ def tab_district_deepdive():
     t_or  = T_or (model, d_pick, s_pick)
 
     r1, r2 = st.columns(2)
-    r1.metric("Both this long AND this severe: once every", f"{t_and:.1f} years")
-    r2.metric("Either this long OR this severe: once every", f"{t_or:.1f} years")
+    r1.metric(f"At least {d_pick} months AND at least severity {s_pick:.1f}: once every", f"{t_and:.1f} years")
+    r2.metric(f"At least {d_pick} months OR at least severity {s_pick:.1f}: once every", f"{t_or:.1f} years")
 
     st.info(f"**In plain English**: a drought lasting at least **{d_pick} months** with total "
-             f"severity score at least **{s_pick:.1f}** is expected roughly once every "
-             f"**{t_and:.0f} years** in {district}.")
+         f"severity score at least **{s_pick:.1f}** is expected roughly once every "
+         f"**{t_and:.0f} years** in {district}.")
 
     st.subheader("Standard drought return periods")
     st.dataframe(result["return_periods"], use_container_width=True, hide_index=True)
