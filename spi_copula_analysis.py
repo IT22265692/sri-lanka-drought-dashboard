@@ -416,6 +416,7 @@ def return_period_table(model: DistrictModel, periods=(2, 5, 10, 20, 50, 100)) -
     return pd.DataFrame(rows)
 
 
+
 # =============================================================================
 # 7. TAIL DEPENDENCE COEFFICIENTS
 # =============================================================================
