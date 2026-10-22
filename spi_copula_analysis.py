@@ -343,9 +343,18 @@ def build_district_model(precip_df: pd.DataFrame, district: str, spi_scale: int)
     spi_df = compute_spi(precip_df, scale=spi_scale)
     spi_col = f"SPI{spi_scale}"
     events = extract_drought_events(spi_df, spi_col=spi_col)
+    model = model_from_events(events, district, spi_scale, n_months=len(precip_df))
+    return model, spi_df, events
 
+
+def model_from_events(events: pd.DataFrame, district: str, spi_scale: int,
+                      n_months: int) -> DistrictModel:
+    """Marginals, copula and E(L) from a table of drought events.
+
+    Shared by SPI and by any other standardised index (MSDI uses it too).
+    """
     if len(events) < 10:
-        raise ValueError(f"Only {len(events)} events for {district} SPI-{spi_scale}; need >=10 for copula fit")
+        raise ValueError(f"Only {len(events)} events for {district} scale {spi_scale}; need >=10 for copula fit")
 
     marg = fit_marginals(events)
     tau = float(stats.kendalltau(events["Duration"], events["Severity"]).statistic)
@@ -362,15 +371,14 @@ def build_district_model(precip_df: pd.DataFrame, district: str, spi_scale: int)
             print(f"  {fam} fit failed for {district} SPI-{spi_scale}: {e}")
 
     best = min(fits, key=lambda f: f.aic)
-    EL = len(precip_df) / len(events)
+    EL = n_months / len(events)
 
-    model = DistrictModel(
+    return DistrictModel(
         district=district, spi_scale=spi_scale, n_events=len(events),
         kendall_tau=tau, spearman_rho=rho, marginals=marg,
         all_fits=fits, best_family=best.family, best_theta=best.parameter,
         EL_months=EL,
     )
-    return model, spi_df, events
 
 
 # =============================================================================
