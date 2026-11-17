@@ -1,5 +1,46 @@
-echo "__pycache__/
+# Python bytecode
+__pycache__/
 *.pyc
+
+# Fitted models and index tables (rebuilt by the scripts, large)
+cache/*.pkl
+cache/*.tmp
 cache/
+*.pkl
+
+# Jupyter autosaves, and HTML copies of the notebooks (rebuilt from the .ipynb files)
+.ipynb_checkpoints/
+notebooks/*.html
+
+# Generated figures (rebuilt by compare_indices.py)
+comparison_outputs/*.png
+
+# Raw data downloads (the processed district files are kept)
+downloads/
+*.zip
+*.nc
+
+# Streamlit secrets and cache (the theme in .streamlit/config.toml is kept)
+.streamlit/secrets.toml
+.streamlit/cache/
+
+# Local environments, editor state and OS files
 .venv/
-.DS_Store" > .gitignore
+.DS_Store
+anaconda_projects/
+
+# Kept local: notes for the supervisors
+docs/supervisor_summary.md
+docs/supervisor_questions.md
+
+# The authors' published script: linked from validation/authors_code/SOURCE.txt, not copied here
+validation/authors_code/CopulaSelection.m
+
+# Files over 50 MB are not committed. Git cannot ignore by size, so check before adding large files.
+
+# Publisher holds exclusive rights; keep the paper out of the repo
+MSDI Index_Published paper.pdf
+*Published paper*.pdf
+
+# Files set aside during the clean-up (recoverable, not for the repo)
+_removed/
