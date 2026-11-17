@@ -1,0 +1,11 @@
+item,paper,ours
+Rainfall range (mm/day),0 to 18.41,0.00 to 20.71
+TS range (degC),22.98 to 33.74,22.98 to 33.75
+T2M range (degC),22.98 to 33.74,22.98 to 31.41
+Rainfall AIC by family,"beta 2061.7, gamma 2104.2, HG 2265.9","beta 2314.1, gamma 2243.3, halfnorm 2277.3"
+Rainfall selected,"beta (alpha 0.779, beta 5.271)","gamma (shape=0.9483, scale=3.78)"
+Temperature mixture,"0.31*N(24.86, 0.80) + 0.69*N(28.66, 1.32)","0.18*N(24.36, 0.60) + 0.82*N(27.56, 1.63)"
+"Kendall's tau, months paired",-0.0071,-0.2922
+"Kendall's tau, temperature shuffled (authors' code)",-0.0071,0.0016
+Copulas usable at this tau,"Frank, FGM, AMH (FGM chosen)",Frank
+"Paper-formula MSDI-12, share of months below 0",most months after 1992 (Fig. 7),100% (mean -1.13)

@@ -1,0 +1,31 @@
+district,index,scale,hit rate,false alarm rate,skill (HR - FAR),share of all months flagged
+Anuradhapura,MSDI corrected,1,0.38,0.2,0.18,0.15
+Anuradhapura,MSDI corrected,3,0.62,0.28,0.34,0.16
+Anuradhapura,MSDI corrected,6,0.5,0.2,0.3,0.16
+Anuradhapura,MSDI corrected,9,0.5,0.16,0.34,0.14
+Anuradhapura,MSDI corrected,12,0.38,0.16,0.22,0.13
+Anuradhapura,MSDI paper,1,0.0,0.0,0.0,0.0
+Anuradhapura,MSDI paper,3,0.88,1.0,-0.12,0.36
+Anuradhapura,MSDI paper,6,1.0,1.0,0.0,0.92
+Anuradhapura,MSDI paper,9,1.0,1.0,0.0,0.98
+Anuradhapura,MSDI paper,12,1.0,0.96,0.04,0.98
+Anuradhapura,SPI,1,0.5,0.12,0.38,0.15
+Anuradhapura,SPI,3,0.5,0.12,0.38,0.15
+Anuradhapura,SPI,6,0.25,0.08,0.17,0.12
+Anuradhapura,SPI,9,0.25,0.04,0.21,0.1
+Anuradhapura,SPI,12,0.25,0.08,0.17,0.1
+Polonnaruwa,MSDI corrected,1,0.5,0.24,0.26,0.17
+Polonnaruwa,MSDI corrected,3,0.5,0.2,0.3,0.16
+Polonnaruwa,MSDI corrected,6,0.38,0.16,0.22,0.14
+Polonnaruwa,MSDI corrected,9,0.12,0.16,-0.04,0.13
+Polonnaruwa,MSDI corrected,12,0.12,0.16,-0.04,0.14
+Polonnaruwa,MSDI paper,1,0.0,0.0,0.0,0.0
+Polonnaruwa,MSDI paper,3,1.0,1.0,0.0,0.41
+Polonnaruwa,MSDI paper,6,1.0,1.0,0.0,0.96
+Polonnaruwa,MSDI paper,9,1.0,1.0,0.0,0.98
+Polonnaruwa,MSDI paper,12,1.0,0.96,0.04,0.98
+Polonnaruwa,SPI,1,0.38,0.16,0.22,0.16
+Polonnaruwa,SPI,3,0.38,0.12,0.26,0.14
+Polonnaruwa,SPI,6,0.38,0.12,0.26,0.13
+Polonnaruwa,SPI,9,0.25,0.08,0.17,0.11
+Polonnaruwa,SPI,12,0.25,0.08,0.17,0.1
