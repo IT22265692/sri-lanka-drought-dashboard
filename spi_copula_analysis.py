@@ -1,24 +1,31 @@
 """
-SPI + Copula Analysis Library  (v3)
-=====================================
-Changes from v2:
-  - Gaussian copula removed. Three families only: Gumbel-Hougaard, Clayton,
-    Frank. Drought Duration/Severity dependence is consistently
-    upper-tail-heavy in this data, and Gaussian never won a single
-    district's AIC comparison, so it added complexity without ever
-    being selected.
-  - New estimate_spi_from_input(): lets a user type in a rainfall reading
-    for a specific month and see what SPI that would produce, using the
-    district's existing climatology.
+spi_copula_analysis.py
+======================
+Standardized Precipitation Index (SPI), run-theory drought events, the
+duration-severity copula and joint return periods.
 
-Requirements:
-    pip install pandas numpy scipy
+Where it sits in the pipeline:
+
+    common.read_rainfall  ->  compute_spi            (SPI-1, SPI-3, SPI-6)
+                          ->  extract_drought_events (duration D, severity S)
+                          ->  model_from_events      (D ~ Exponential, S ~ Gamma,
+                                                      Gumbel / Clayton / Frank by AIC)
+                          ->  T_and, T_or, return_period_table
+
+The event, copula and return-period part is shared: SSI and MSDI events are
+analysed with exactly the same functions (see index_data.events_and_model).
+
+References: McKee, Doesken and Kleist (1993) for SPI; Shiau (2006) for the
+duration-severity copula and joint return periods; Nelsen (2006) for the
+copula formulas.
 """
 from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+
 import numpy as np
 import pandas as pd
-from scipy import stats, optimize
-from dataclasses import dataclass, asdict, field
+from scipy import optimize, stats
 
 
 # =============================================================================
@@ -26,19 +33,17 @@ from dataclasses import dataclass, asdict, field
 # =============================================================================
 
 def compute_spi(df: pd.DataFrame, scale: int = 1, precip_col: str = "prcp") -> pd.DataFrame:
-    """
-    Compute SPI at the given time scale from monthly precipitation.
+    """SPI at one time scale from monthly rainfall (McKee et al. 1993).
 
-    Method (McKee 1993, standard SPI):
-      1. If scale > 1, rolling-sum the precipitation over that many months.
-      2. For each calendar month separately, fit a Gamma distribution
-         to the rolled series (12 fits total).
-      3. Transform each observation through that month's Gamma CDF, then
-         through the inverse standard normal CDF, to get SPI.
+    df: monthly table with Year, Month and precip_col (mm). scale: 1, 3 or 6.
+    Returns df sorted by date with a new column SPI<scale>. Each calendar
+    month gets its own Gamma fit, because a normal January and a normal July
+    are very different amounts of rain.
     """
     df = df.sort_values(["Year", "Month"]).reset_index(drop=True).copy()
     p = df[precip_col].astype(float).values
 
+    # Step 1: k-month total ending at each month (the first k - 1 months are NaN)
     if scale == 1:
         rolled = p.copy()
     else:
@@ -52,8 +57,13 @@ def compute_spi(df: pd.DataFrame, scale: int = 1, precip_col: str = "prcp") -> p
         x = rolled[mask].copy()
         if len(x) < 10:
             continue
+        # Zero totals are set to 0.001 mm so the Gamma fit (support x > 0) works.
+        # District-mean monthly totals are almost never exactly 0 in this data.
         x[x <= 0] = 0.001
+        # Step 2: Gamma shape and scale by maximum likelihood, location fixed at 0
         shape, loc, scale_g = stats.gamma.fit(x, floc=0)
+        # Step 3: SPI = Phi^-1(F_Gamma(x)); F is kept inside (1e-4, 1 - 1e-4),
+        # so SPI lies between -3.72 and +3.72
         cdf = stats.gamma.cdf(np.clip(rolled[mask], 0.001, None), a=shape, scale=scale_g)
         cdf = np.clip(cdf, 1e-4, 1 - 1e-4)
         df.loc[mask, spi_col] = stats.norm.ppf(cdf)
@@ -62,22 +72,15 @@ def compute_spi(df: pd.DataFrame, scale: int = 1, precip_col: str = "prcp") -> p
 
 
 def estimate_spi_from_input(precip_df: pd.DataFrame, scale: int, year: int, month: int,
-                             rainfall_mm: float, precip_col: str = "prcp") -> float | None:
-    """
-    'What SPI would this reading give?' calculator.
+                            rainfall_mm: float, precip_col: str = "prcp") -> float | None:
+    """'What SPI would this reading give?' calculator.
 
-    Substitutes rainfall_mm into the district's rainfall series at
-    (year, month) -- overwriting it if that month already has a value,
-    or appending a new row if it's a future month -- then recomputes SPI
-    at the requested scale and returns the value at that month.
-
-    For SPI-3 / SPI-6, this correctly uses the district's ACTUAL rainfall
-    for the other months in the rolling window; only the target month is
-    hypothetical.
-
-    Note: refitting the Gamma distribution on 42 years of history with one
-    value changed/added has a negligible effect on the climatology, so this
-    is equivalent in practice to using the existing baseline.
+    Puts rainfall_mm into the district's series at (year, month), replacing
+    the value there or adding a new month, recomputes SPI at the requested
+    scale and returns the value at that month (None if it cannot be computed).
+    For SPI-3 and SPI-6 the other months of the window are the real data.
+    Refitting the Gamma with one value changed has a negligible effect on the
+    climatology, so this matches using the existing fit.
     """
     df = precip_df.copy()
     mask = (df["Year"] == year) & (df["Month"] == month)
@@ -96,13 +99,16 @@ def estimate_spi_from_input(precip_df: pd.DataFrame, scale: int, year: int, mont
 
 
 # =============================================================================
-# 2. DROUGHT EVENT EXTRACTION  (Shiau 2006 rule: SPI < 0)
+# 2. DROUGHT EVENT EXTRACTION  (run theory, threshold 0)
 # =============================================================================
 
 def extract_drought_events(df: pd.DataFrame, spi_col: str) -> pd.DataFrame:
-    """
-    A drought event = continuous run where SPI < 0.
-    Duration = run length in months.  Severity = sum of |SPI| over the run.
+    """Run theory: a drought event is a continuous run of months with index < 0.
+
+    df: table with Year, Month and spi_col (any standardised index).
+    Returns one row per event: StartYear, StartMonth, EndYear, EndMonth,
+    Duration D (months) and Severity S = sum of |index| over the run, rounded
+    to 4 decimals. A missing value ends a run.
     """
     events = []
     in_drought = False
@@ -132,6 +138,7 @@ def extract_drought_events(df: pd.DataFrame, spi_col: str) -> pd.DataFrame:
                 })
                 in_drought = False
 
+    # A run still open at the end of the record is kept as an event
     if in_drought:
         last = df.index[-1]
         events.append({
@@ -147,11 +154,16 @@ def extract_drought_events(df: pd.DataFrame, spi_col: str) -> pd.DataFrame:
 
 
 # =============================================================================
-# 3. MARGINAL FITS  (Exponential for Duration, Gamma for Severity)
+# 3. MARGINAL FITS  (Exponential for duration, Gamma for severity)
 # =============================================================================
 
 @dataclass
 class Marginals:
+    """Fitted distributions of drought duration D and severity S.
+
+    D ~ Exponential(rate lambda_d), S ~ Gamma(shape alpha_s, scale beta_s).
+    F_* are CDFs, f_* densities and q_* quantile functions.
+    """
     lambda_d: float
     alpha_s: float
     beta_s: float
@@ -160,25 +172,35 @@ class Marginals:
     n_events: int
 
     def F_D(self, d):
+        """P(D <= d), kept inside (1e-9, 1 - 1e-9) for the copula."""
         return np.clip(stats.expon.cdf(d, scale=1 / self.lambda_d), 1e-9, 1 - 1e-9)
 
     def F_S(self, s):
+        """P(S <= s), kept inside (1e-9, 1 - 1e-9) for the copula."""
         return np.clip(stats.gamma.cdf(s, a=self.alpha_s, scale=self.beta_s), 1e-9, 1 - 1e-9)
 
     def f_D(self, d):
+        """Exponential density of D."""
         return stats.expon.pdf(d, scale=1 / self.lambda_d)
 
     def f_S(self, s):
+        """Gamma density of S."""
         return stats.gamma.pdf(s, a=self.alpha_s, scale=self.beta_s)
 
     def q_D(self, p):
+        """Duration with non-exceedance probability p."""
         return stats.expon.ppf(p, scale=1 / self.lambda_d)
 
     def q_S(self, p):
+        """Severity with non-exceedance probability p."""
         return stats.gamma.ppf(p, a=self.alpha_s, scale=self.beta_s)
 
 
 def fit_marginals(events: pd.DataFrame) -> Marginals:
+    """Fit D ~ Exponential and S ~ Gamma to an events table, both by maximum likelihood.
+
+    The Exponential MLE is simply lambda = 1 / mean(D). Gamma uses location 0.
+    """
     D = events["Duration"].astype(float).values
     S = events["Severity"].astype(float).values
     lam_d = 1.0 / D.mean()
@@ -190,22 +212,23 @@ def fit_marginals(events: pd.DataFrame) -> Marginals:
 
 
 # =============================================================================
-# 4. COPULA FAMILIES  -- Gumbel-Hougaard, Clayton, Frank only
+# 4. COPULA FAMILIES  (Gumbel-Hougaard, Clayton, Frank)
 # =============================================================================
 #
-#   Gumbel-Hougaard  -- upper tail dependence  (matches drought behaviour)
-#   Clayton          -- lower tail dependence
-#   Frank            -- no tail dependence
+#   Gumbel-Hougaard  upper-tail dependence (long and severe droughts together)
+#   Clayton          lower-tail dependence
+#   Frank            no tail dependence
 #
-# Gaussian was tested during development but never won a single district's
-# AIC comparison against these three, so it has been removed to keep the
-# model set simple and interpretable.
+# A Gaussian copula was tried during development and never won on AIC, so it
+# was dropped. The MSDI module reuses these formulas.
 
 def _clip01(x, eps=1e-6):
+    """Keep probabilities inside (eps, 1 - eps) so the logs stay finite."""
     return np.clip(x, eps, 1 - eps)
 
 
 def _gumbel_log_density(u, v, theta):
+    """log c(u, v) of the Gumbel-Hougaard copula, theta >= 1."""
     if theta < 1.0:
         return -np.inf
     u, v = _clip01(u), _clip01(v)
@@ -221,12 +244,15 @@ def _gumbel_log_density(u, v, theta):
     )
     return log_c
 
+
 def _gumbel_cdf(u, v, theta):
+    """Gumbel copula, C = exp(-[(-ln u)^theta + (-ln v)^theta]^(1/theta))."""
     u, v = _clip01(u), _clip01(v)
     return np.exp(-(((-np.log(u)) ** theta + (-np.log(v)) ** theta) ** (1 / theta)))
 
 
 def _clayton_log_density(u, v, theta):
+    """log c(u, v) of the Clayton copula, theta > 0."""
     if theta <= 0:
         return -np.inf
     u, v = _clip01(u), _clip01(v)
@@ -236,21 +262,28 @@ def _clayton_log_density(u, v, theta):
         + (-1 / theta - 2) * np.log(u ** -theta + v ** -theta - 1)
     )
 
+
 def _clayton_cdf(u, v, theta):
+    """Clayton copula, C = (u^-theta + v^-theta - 1)^(-1/theta)."""
     u, v = _clip01(u), _clip01(v)
     return (u ** -theta + v ** -theta - 1) ** (-1 / theta)
 
 
 def _frank_log_density(u, v, theta):
+    """log c(u, v) of the Frank copula, theta != 0."""
     if abs(theta) < 1e-6:
         return -np.inf
     u, v = _clip01(u), _clip01(v)
-    eu = np.exp(-theta * u); ev = np.exp(-theta * v); e1 = np.exp(-theta)
+    eu = np.exp(-theta * u)
+    ev = np.exp(-theta * v)
+    e1 = np.exp(-theta)
     num = theta * (1 - e1) * eu * ev
     den = ((1 - e1) - (1 - eu) * (1 - ev)) ** 2
     return np.log(num) - np.log(den)
 
+
 def _frank_cdf(u, v, theta):
+    """Frank copula, C = -(1/theta) ln[1 + (e^(-theta u) - 1)(e^(-theta v) - 1) / (e^(-theta) - 1)]."""
     u, v = _clip01(u), _clip01(v)
     return -1 / theta * np.log(
         1 + (np.exp(-theta * u) - 1) * (np.exp(-theta * v) - 1) / (np.exp(-theta) - 1)
@@ -259,6 +292,7 @@ def _frank_cdf(u, v, theta):
 
 @dataclass
 class CopulaFit:
+    """Maximum likelihood fit of one copula family to the (u, v) pairs."""
     family: str
     parameter: float
     loglik: float
@@ -268,12 +302,18 @@ class CopulaFit:
 
 
 def _fit_family(u, v, family: str, tau_hat: float) -> CopulaFit:
+    """MLE of one family's theta with L-BFGS-B, started from the tau-inversion value.
+
+    AIC = -2 log L + 2 (one parameter).
+    """
     if family == "Gumbel":
+        # tau = 1 - 1/theta  ->  theta = 1 / (1 - tau)
         init = max(1.05, 1.0 / (1.0 - tau_hat)) if tau_hat < 0.99 else 5.0
         bounds = [(1.001, 20)]
         neg_ll = lambda p: -_gumbel_log_density(u, v, p[0]).sum()
         up, low = True, False
     elif family == "Clayton":
+        # tau = theta / (theta + 2)  ->  theta = 2 tau / (1 - tau)
         init = max(0.05, 2 * tau_hat / (1 - tau_hat)) if tau_hat < 0.99 else 5.0
         bounds = [(0.001, 20)]
         neg_ll = lambda p: -_clayton_log_density(u, v, p[0]).sum()
@@ -295,16 +335,24 @@ def _fit_family(u, v, family: str, tau_hat: float) -> CopulaFit:
 
 
 def _copula_cdf(family: str, u, v, theta) -> float | np.ndarray:
-    if family == "Gumbel":   return _gumbel_cdf(u, v, theta)
-    if family == "Clayton":  return _clayton_cdf(u, v, theta)
-    if family == "Frank":    return _frank_cdf(u, v, theta)
+    """C(u, v) for Gumbel, Clayton or Frank."""
+    if family == "Gumbel":
+        return _gumbel_cdf(u, v, theta)
+    if family == "Clayton":
+        return _clayton_cdf(u, v, theta)
+    if family == "Frank":
+        return _frank_cdf(u, v, theta)
     raise ValueError(family)
 
 
 def _copula_log_density(family: str, u, v, theta):
-    if family == "Gumbel":   return _gumbel_log_density(u, v, theta)
-    if family == "Clayton":  return _clayton_log_density(u, v, theta)
-    if family == "Frank":    return _frank_log_density(u, v, theta)
+    """log c(u, v) for Gumbel, Clayton or Frank."""
+    if family == "Gumbel":
+        return _gumbel_log_density(u, v, theta)
+    if family == "Clayton":
+        return _clayton_log_density(u, v, theta)
+    if family == "Frank":
+        return _frank_log_density(u, v, theta)
     raise ValueError(family)
 
 
@@ -317,6 +365,11 @@ COPULA_FAMILIES = ["Gumbel", "Clayton", "Frank"]
 
 @dataclass
 class DistrictModel:
+    """Duration-severity model for one district, index and scale.
+
+    EL_months is the mean inter-arrival time E(L) between events, in months,
+    estimated as (months in the record) / (number of events).
+    """
     district: str
     spi_scale: int
     n_events: int
@@ -329,6 +382,7 @@ class DistrictModel:
     EL_months: float = 0.0
 
     def to_dict(self) -> dict:
+        """Plain-dict copy, e.g. for saving to JSON."""
         return {
             "district": self.district, "spi_scale": self.spi_scale,
             "n_events": self.n_events, "kendall_tau": self.kendall_tau,
@@ -340,6 +394,10 @@ class DistrictModel:
 
 
 def build_district_model(precip_df: pd.DataFrame, district: str, spi_scale: int):
+    """SPI -> events -> duration-severity model for one district.
+
+    Returns (DistrictModel, SPI table, events table).
+    """
     spi_df = compute_spi(precip_df, scale=spi_scale)
     spi_col = f"SPI{spi_scale}"
     events = extract_drought_events(spi_df, spi_col=spi_col)
@@ -349,9 +407,9 @@ def build_district_model(precip_df: pd.DataFrame, district: str, spi_scale: int)
 
 def model_from_events(events: pd.DataFrame, district: str, spi_scale: int,
                       n_months: int) -> DistrictModel:
-    """Marginals, copula and E(L) from a table of drought events.
+    """Marginals, best copula (lowest AIC) and E(L) from a table of drought events.
 
-    Shared by SPI and by any other standardised index (MSDI uses it too).
+    Shared by SPI, SSI and MSDI. Needs at least 10 events (raises ValueError).
     """
     if len(events) < 10:
         raise ValueError(f"Only {len(events)} events for {district} scale {spi_scale}; need >=10 for copula fit")
@@ -360,6 +418,7 @@ def model_from_events(events: pd.DataFrame, district: str, spi_scale: int,
     tau = float(stats.kendalltau(events["Duration"], events["Severity"]).statistic)
     rho = float(stats.spearmanr(events["Duration"], events["Severity"]).statistic)
 
+    # Sklar: put each variable on (0, 1) through its own fitted CDF
     u = marg.F_D(events["Duration"].values)
     v = marg.F_S(events["Severity"].values)
 
@@ -382,33 +441,45 @@ def model_from_events(events: pd.DataFrame, district: str, spi_scale: int,
 
 
 # =============================================================================
-# 6. RETURN PERIODS  (Shiau 2006) -- with beginner-friendly column names
+# 6. JOINT RETURN PERIODS  (Shiau 2006)
 # =============================================================================
 #
-#   AND : P(D>=d AND S>=s) = 1 - F_D(d) - F_S(s) + C(u,v)
-#   OR  : P(D>=d  OR S>=s) = 1 - C(u,v)
-#   T   = E(L) / P / 12    (converts months to years)
+#   AND : P(D >= d AND S >= s) = 1 - F_D(d) - F_S(s) + C(F_D(d), F_S(s))
+#   OR  : P(D >= d OR  S >= s) = 1 - C(F_D(d), F_S(s))
+#   T   = E(L) / P / 12        (E(L) in months, T in years)
 
 def joint_prob_and(model: DistrictModel, d, s) -> float:
+    """P(D >= d AND S >= s), floored at 1e-9."""
     u = model.marginals.F_D(d)
     v = model.marginals.F_S(s)
     C = _copula_cdf(model.best_family, u, v, model.best_theta)
     return max(1 - u - v + float(C), 1e-9)
 
+
 def joint_prob_or(model: DistrictModel, d, s) -> float:
+    """P(D >= d OR S >= s), floored at 1e-9."""
     u = model.marginals.F_D(d)
     v = model.marginals.F_S(s)
     C = _copula_cdf(model.best_family, u, v, model.best_theta)
     return max(1 - float(C), 1e-9)
 
+
 def T_and(model: DistrictModel, d, s) -> float:
+    """Return period in years of a drought at least d months long AND at least s severe."""
     return model.EL_months / joint_prob_and(model, d, s) / 12.0
 
+
 def T_or(model: DistrictModel, d, s) -> float:
+    """Return period in years of a drought at least d months long OR at least s severe."""
     return model.EL_months / joint_prob_or(model, d, s) / 12.0
 
 
 def return_period_table(model: DistrictModel, periods=(2, 5, 10, 20, 50, 100)) -> pd.DataFrame:
+    """Design droughts for standard return periods, with their joint T_AND and T_OR.
+
+    For each T, d and s are the duration and severity whose own (univariate)
+    return period is T, i.e. exceedance probability E(L) / (12 T).
+    """
     rows = []
     for T in periods:
         p_exc = model.EL_months / (T * 12)
@@ -424,38 +495,38 @@ def return_period_table(model: DistrictModel, periods=(2, 5, 10, 20, 50, 100)) -
     return pd.DataFrame(rows)
 
 
-
 # =============================================================================
 # 7. TAIL DEPENDENCE COEFFICIENTS
 # =============================================================================
 
 def tail_dependence_coefs(family: str, theta: float) -> tuple[float, float]:
-    """Return (upper, lower) tail dependence coefficients for the given family."""
+    """(upper, lower) tail dependence: Gumbel 2 - 2^(1/theta), Clayton 2^(-1/theta), Frank 0."""
     if family == "Gumbel":
         return (2 - 2 ** (1 / theta), 0.0)
     if family == "Clayton":
         return (0.0, 2 ** (-1 / theta))
-    if family == "Frank":
-        return (0.0, 0.0)
     return (0.0, 0.0)
 
 
 # =============================================================================
-# 8. SPI CATEGORY LABELS  (for public-facing UI)
+# 8. DROUGHT CLASSES  (McKee et al. 1993, shared by SPI, SSI and MSDI)
 # =============================================================================
 
+# (lower bound, upper bound, label, colour). Colours: brown (dry) to blue (wet),
+# a colour-blind safe diverging scheme with a light neutral middle.
 SPI_CATEGORIES = [
-    (2.0,  float("inf"), "Extremely wet",   "#1E3A52"),
-    (1.5,  2.0,           "Very wet",        "#3B6A85"),
-    (1.0,  1.5,           "Moderately wet",  "#7FA2B8"),
-    (-1.0, 1.0,           "Near normal",     "#EFE5D2"),
-    (-1.5, -1.0,          "Moderately dry",  "#DE924F"),
-    (-2.0, -1.5,          "Severely dry",    "#B04A1A"),
-    (float("-inf"), -2.0, "Extremely dry",   "#7A3211"),
+    (2.0,  float("inf"), "Extremely wet",   "#08306B"),
+    (1.5,  2.0,           "Very wet",        "#2171B5"),
+    (1.0,  1.5,           "Moderately wet",  "#6BAED6"),
+    (-1.0, 1.0,           "Near normal",     "#EDE8DF"),
+    (-1.5, -1.0,          "Moderately dry",  "#F4A259"),
+    (-2.0, -1.5,          "Severely dry",    "#C4561D"),
+    (float("-inf"), -2.0, "Extremely dry",   "#7A2E0B"),
 ]
 
+
 def spi_category(value: float) -> tuple[str, str, str]:
-    """Return (label, emoji, colour_hex) for an SPI value. McKee 1993 classes."""
+    """(label, unused, colour) for an index value, McKee classes."""
     if pd.isna(value):
         return ("No data", "", "#CCCCCC")
     for lo, hi, label, colour in SPI_CATEGORIES:
@@ -465,7 +536,7 @@ def spi_category(value: float) -> tuple[str, str, str]:
 
 
 def spi_plain_english(value: float) -> str:
-    """One-sentence explanation of what this SPI value means to a farmer."""
+    """One-sentence explanation of what an index value means to a farmer."""
     if pd.isna(value):
         return "No rainfall data available for this month."
     if value >= 1.5:
@@ -480,4 +551,4 @@ def spi_plain_english(value: float) -> str:
         return "Noticeably drier than usual. Consider conserving irrigation water and delaying non-essential planting."
     if value >= -2.0:
         return "Severely dry. Crop stress is likely; prioritise water for high-value crops."
-    return "Extremely dry -- among the driest 2-3% of months on record for this district. Serious risk to unirrigated crops."
+    return "Extremely dry, among the driest 2-3% of months on record for this district. Serious risk to unirrigated crops."
