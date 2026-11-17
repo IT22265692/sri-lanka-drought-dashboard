@@ -1,0 +1,9 @@
+# Dashboard theme: the same tokens as ui.py, so Streamlit's own widgets
+# (buttons, sliders, segmented controls) use the brown accent, not the default red.
+[theme]
+base = "light"
+primaryColor = "#8C4A1F"
+backgroundColor = "#F7F4EE"
+secondaryBackgroundColor = "#EFE9DF"
+textColor = "#2B2118"
+font = "sans serif"
