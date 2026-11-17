@@ -1,6 +1,9 @@
 """
-NASA POWER -> District-Averaged Monthly Rainfall
-=================================================
+Nasapower district polygon pipeline.py
+=====================================
+NASA POWER -> district-averaged monthly rainfall (first step of the pipeline;
+writes district_rainfall/, read by common.read_rainfall).
+
 PRODUCTION VERSION: uses TRUE district polygon boundaries (GADM level 2),
 not bounding-box approximations.
 
@@ -14,7 +17,7 @@ Pipeline:
         d. Convert each cell from mm/day -> monthly total (x days in month).
         e. Keep ONLY grid cells whose centre falls INSIDE the true polygon.
         f. Average the remaining cells per Year-Month.
-  3. Save one Excel file per district (matches your existing
+  3. Save one Excel file per district (matches the existing
      Pre_processed_data_Anuradhapura.xlsx format) + one combined CSV.
 
 Requirements:
@@ -24,7 +27,7 @@ First run downloads ~30MB from GADM. Subsequent runs skip the download.
 
 WHY THIS DESIGN:
   Bounding boxes are quick but include grid cells that geographically
-  belong to neighbouring districts, biasing the average -- especially bad
+  belong to neighbouring districts, biasing the average, especially bad
   for districts with irregular shapes (Trincomalee, Batticaloa,
   Hambantota). Masking to the true polygon ensures every averaged cell
   really is inside the district being reported.
@@ -57,10 +60,11 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # STEP 1: Download GADM shapefile (once)
 # =============================================================================
 def ensure_gadm():
+    """Download and unzip the GADM Sri Lanka boundaries once; skip if already present."""
     if os.path.isfile(GADM_DISTRICTS_FILE):
         print(f"GADM shapefile already present: {GADM_DISTRICTS_FILE}")
         return
-    print(f"Downloading GADM Sri Lanka shapefile...")
+    print("Downloading GADM Sri Lanka shapefile...")
     r = requests.get(GADM_URL, timeout=180)
     r.raise_for_status()
     os.makedirs(GADM_DIR, exist_ok=True)
@@ -73,6 +77,7 @@ def ensure_gadm():
 # STEP 2: Load 25 Sri Lanka districts by dissolving DS divisions on NAME_1
 # =============================================================================
 def load_districts_gdf() -> gpd.GeoDataFrame:
+    """25 district polygons (GADM level 2 dissolved on NAME_1), in WGS84 lat/lon."""
     gdf = gpd.read_file(GADM_DISTRICTS_FILE)
     # In GADM's Sri Lanka data, NAME_1 == District, NAME_2 == DS Division
     gdf = gdf.dissolve(by="NAME_1", as_index=False)
@@ -85,6 +90,10 @@ def load_districts_gdf() -> gpd.GeoDataFrame:
 # STEP 3: Expand bounding box to satisfy NASA POWER's 2 deg minimum
 # =============================================================================
 def expand_bbox(lat_min, lat_max, lon_min, lon_max, min_deg=MIN_BOX_DEG):
+    """Widen a bounding box symmetrically so each side spans at least min_deg degrees.
+
+    NASA POWER's regional endpoint rejects boxes smaller than 2 degrees.
+    """
     lat_range = lat_max - lat_min
     lon_range = lon_max - lon_min
     if lat_range < min_deg:
@@ -103,6 +112,11 @@ def expand_bbox(lat_min, lat_max, lon_min, lon_max, min_deg=MIN_BOX_DEG):
 # =============================================================================
 def _fetch_regional_chunk(lat_min, lat_max, lon_min, lon_max, start_year, end_year,
                            max_retries=3):
+    """One NASA POWER regional request (PRECTOTCORR, mm/day) for a box and year range.
+
+    Retries up to max_retries times with a growing wait. Returns one row per
+    grid cell and month: Lat, Lon, Year, Month, Precip_mm_per_day.
+    """
     url = "https://power.larc.nasa.gov/api/temporal/monthly/regional"
     params = {
         "parameters": "PRECTOTCORR",
@@ -142,6 +156,7 @@ def _fetch_regional_chunk(lat_min, lat_max, lon_min, lon_max, start_year, end_ye
  
  
 def fetch_regional_precip(lat_min, lat_max, lon_min, lon_max, start_year, end_year):
+    """Whole record for one box, fetched in YEARS_PER_CHUNK-year pieces (API size limit)."""
     chunks = []
     y = start_year
     while y <= end_year:
@@ -157,6 +172,12 @@ def fetch_regional_precip(lat_min, lat_max, lon_min, lon_max, start_year, end_ye
 # STEP 5: Mask grid cells to a polygon, then average per Year-Month
 # =============================================================================
 def mask_and_average(raw: pd.DataFrame, polygon):
+    """Monthly totals averaged over the grid cells whose centre is inside the polygon.
+
+    mm/day is converted to a monthly total (x days in the month) first. If no
+    cell centre is inside (small district), the cell nearest the centroid is
+    used. Returns (Year/Month/prcp table, cells in box, cells used).
+    """
     days_in_month = raw.apply(
         lambda r: pd.Period(year=int(r.Year), month=int(r.Month), freq="M").days_in_month,
         axis=1,
@@ -203,6 +224,7 @@ def mask_and_average(raw: pd.DataFrame, polygon):
 # STEP 6: Run for every district
 # =============================================================================
 def run_all_districts():
+    """Fetch, mask and save every district, plus the combined CSV and a grid-cell audit."""
     ensure_gadm()
     districts_gdf = load_districts_gdf()
     print(f"\nLoaded {len(districts_gdf)} districts from GADM.\n")

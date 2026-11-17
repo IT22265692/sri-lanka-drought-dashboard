@@ -1,0 +1,5 @@
+CopulaSelection.m is an unmodified copy of the authors' published code.
+
+Source:  https://github.com/KushMath/DroughtIndex/blob/ae1f3a738d97f6006c82799ba02feedd8d35dce7/CopulaSelection.m
+Commit:  ae1f3a738d97f6006c82799ba02feedd8d35dce7 (2024-02-13)
+Paper:   Karunarathne, De Silva & Perera (2024), Environ Ecol Stat 31:707-723
