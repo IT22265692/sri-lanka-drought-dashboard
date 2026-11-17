@@ -1,0 +1,101 @@
+district,province,T,extreme cut-off,dry cut-off,months,share dry or worse,share extremely dry
+Ampara,Eastern,3,-3.2,-1.3,502,0.4124,0.002
+Ampara,Eastern,6,-2.5,-0.8,499,0.9539,0.0
+Ampara,Eastern,9,-2.1,-0.4,496,1.0,0.0
+Ampara,Eastern,12,-1.7,-0.3,493,1.0,0.0041
+Anuradhapura,North Central,3,-3.2,-1.3,502,0.3765,0.002
+Anuradhapura,North Central,6,-2.5,-0.8,499,0.9319,0.0
+Anuradhapura,North Central,9,-2.1,-0.4,496,1.0,0.0
+Anuradhapura,North Central,12,-1.7,-0.3,493,1.0,0.0
+Badulla,Uva,3,-3.2,-1.3,502,0.3785,0.002
+Badulla,Uva,6,-2.5,-0.8,499,0.9238,0.0
+Badulla,Uva,9,-2.1,-0.4,496,1.0,0.0
+Badulla,Uva,12,-1.7,-0.3,493,1.0,0.002
+Batticaloa,Eastern,3,-3.2,-1.3,502,0.4104,0.002
+Batticaloa,Eastern,6,-2.5,-0.8,499,0.9619,0.004
+Batticaloa,Eastern,9,-2.1,-0.4,496,1.0,0.0
+Batticaloa,Eastern,12,-1.7,-0.3,493,1.0,0.0061
+Colombo,Western,3,-3.2,-1.3,502,0.3028,0.0
+Colombo,Western,6,-2.5,-0.8,499,0.6613,0.0
+Colombo,Western,9,-2.1,-0.4,496,0.9536,0.0
+Colombo,Western,12,-1.7,-0.3,493,0.9919,0.0
+Galle,Southern,3,-3.2,-1.3,502,0.241,0.0
+Galle,Southern,6,-2.5,-0.8,499,0.5331,0.0
+Galle,Southern,9,-2.1,-0.4,496,0.7984,0.0
+Galle,Southern,12,-1.7,-0.3,493,0.8641,0.0
+Gampaha,Western,3,-3.2,-1.3,502,0.3028,0.0
+Gampaha,Western,6,-2.5,-0.8,499,0.6613,0.0
+Gampaha,Western,9,-2.1,-0.4,496,0.9536,0.0
+Gampaha,Western,12,-1.7,-0.3,493,0.9919,0.0
+Hambantota,Southern,3,-3.2,-1.3,502,0.3685,0.002
+Hambantota,Southern,6,-2.5,-0.8,499,0.8697,0.0
+Hambantota,Southern,9,-2.1,-0.4,496,1.0,0.0
+Hambantota,Southern,12,-1.7,-0.3,493,1.0,0.0
+Jaffna,Northern,3,-3.2,-1.3,502,0.2968,0.004
+Jaffna,Northern,6,-2.5,-0.8,499,0.7936,0.0
+Jaffna,Northern,9,-2.1,-0.4,496,1.0,0.0
+Jaffna,Northern,12,-1.7,-0.3,493,1.0,0.0
+Kalutara,Western,3,-3.2,-1.3,502,0.3167,0.0
+Kalutara,Western,6,-2.5,-0.8,499,0.6693,0.0
+Kalutara,Western,9,-2.1,-0.4,496,0.9113,0.0
+Kalutara,Western,12,-1.7,-0.3,493,0.9615,0.002
+Kandy,Central,3,-3.2,-1.3,502,0.3606,0.0
+Kandy,Central,6,-2.5,-0.8,499,0.8697,0.0
+Kandy,Central,9,-2.1,-0.4,496,1.0,0.0
+Kandy,Central,12,-1.7,-0.3,493,1.0,0.0
+Kegalle,Sabaragamuwa,3,-3.2,-1.3,502,0.3367,0.0
+Kegalle,Sabaragamuwa,6,-2.5,-0.8,499,0.7355,0.0
+Kegalle,Sabaragamuwa,9,-2.1,-0.4,496,0.9919,0.0
+Kegalle,Sabaragamuwa,12,-1.7,-0.3,493,1.0,0.0
+Kilinochchi,Northern,3,-3.2,-1.3,502,0.2968,0.004
+Kilinochchi,Northern,6,-2.5,-0.8,499,0.7936,0.0
+Kilinochchi,Northern,9,-2.1,-0.4,496,1.0,0.0
+Kilinochchi,Northern,12,-1.7,-0.3,493,1.0,0.0
+Kurunegala,North Western,3,-3.2,-1.3,502,0.3167,0.0
+Kurunegala,North Western,6,-2.5,-0.8,499,0.7174,0.0
+Kurunegala,North Western,9,-2.1,-0.4,496,0.9919,0.0
+Kurunegala,North Western,12,-1.7,-0.3,493,1.0,0.0
+Mannar,Northern,3,-3.2,-1.3,502,0.3048,0.004
+Mannar,Northern,6,-2.5,-0.8,499,0.7715,0.004
+Mannar,Northern,9,-2.1,-0.4,496,1.0,0.002
+Mannar,Northern,12,-1.7,-0.3,493,1.0,0.0041
+Matale,Central,3,-3.2,-1.3,502,0.3606,0.0
+Matale,Central,6,-2.5,-0.8,499,0.8697,0.0
+Matale,Central,9,-2.1,-0.4,496,1.0,0.0
+Matale,Central,12,-1.7,-0.3,493,1.0,0.0
+Matara,Southern,3,-3.2,-1.3,502,0.3267,0.0
+Matara,Southern,6,-2.5,-0.8,499,0.6774,0.0
+Matara,Southern,9,-2.1,-0.4,496,0.9234,0.0
+Matara,Southern,12,-1.7,-0.3,493,0.9635,0.0142
+Moneragala,Uva,3,-3.2,-1.3,502,0.3705,0.0
+Moneragala,Uva,6,-2.5,-0.8,499,0.9058,0.0
+Moneragala,Uva,9,-2.1,-0.4,496,1.0,0.0
+Moneragala,Uva,12,-1.7,-0.3,493,1.0,0.0
+Mullaitivu,Northern,3,-3.2,-1.3,502,0.3187,0.006
+Mullaitivu,Northern,6,-2.5,-0.8,499,0.8477,0.006
+Mullaitivu,Northern,9,-2.1,-0.4,496,1.0,0.002
+Mullaitivu,Northern,12,-1.7,-0.3,493,1.0,0.0101
+Nuwara Eliya,Central,3,-3.2,-1.3,502,0.3367,0.0
+Nuwara Eliya,Central,6,-2.5,-0.8,499,0.7355,0.0
+Nuwara Eliya,Central,9,-2.1,-0.4,496,0.9919,0.0
+Nuwara Eliya,Central,12,-1.7,-0.3,493,1.0,0.0
+Polonnaruwa,North Central,3,-3.2,-1.3,502,0.4104,0.002
+Polonnaruwa,North Central,6,-2.5,-0.8,499,0.9619,0.004
+Polonnaruwa,North Central,9,-2.1,-0.4,496,1.0,0.0
+Polonnaruwa,North Central,12,-1.7,-0.3,493,1.0,0.0061
+Puttalam,North Western,3,-3.2,-1.3,502,0.3327,0.002
+Puttalam,North Western,6,-2.5,-0.8,499,0.8417,0.0
+Puttalam,North Western,9,-2.1,-0.4,496,1.0,0.0
+Puttalam,North Western,12,-1.7,-0.3,493,1.0,0.0
+Ratnapura,Sabaragamuwa,3,-3.2,-1.3,502,0.3904,0.0
+Ratnapura,Sabaragamuwa,6,-2.5,-0.8,499,0.8597,0.0
+Ratnapura,Sabaragamuwa,9,-2.1,-0.4,496,1.0,0.0
+Ratnapura,Sabaragamuwa,12,-1.7,-0.3,493,1.0,0.0183
+Trincomalee,Eastern,3,-3.2,-1.3,502,0.3805,0.002
+Trincomalee,Eastern,6,-2.5,-0.8,499,0.9118,0.0
+Trincomalee,Eastern,9,-2.1,-0.4,496,1.0,0.0
+Trincomalee,Eastern,12,-1.7,-0.3,493,1.0,0.0081
+Vavuniya,Northern,3,-3.2,-1.3,502,0.3187,0.006
+Vavuniya,Northern,6,-2.5,-0.8,499,0.8477,0.006
+Vavuniya,Northern,9,-2.1,-0.4,496,1.0,0.002
+Vavuniya,Northern,12,-1.7,-0.3,493,1.0,0.0101
